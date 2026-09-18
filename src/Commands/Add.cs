@@ -6,6 +6,7 @@
         {
             WorkingDirectory = repo;
             Context = repo;
+            pathspecFromFile = ToGitPath(pathspecFromFile);
             Args = $"add --force --verbose --pathspec-from-file={pathspecFromFile.Quoted()}";
         }
     }

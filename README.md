@@ -186,6 +186,31 @@ Users can also launcher `SourceGit` from commandline. Usage:
 <SOURCEGIT_EXEC> --blame <FILE_PATH>         // Launch `SourceGit` to blame a file (HEAD version only) 
 ```
 
+## WSL2 Repositories (Windows only)
+
+On Windows, repositories stored inside a WSL2 distro (e.g. `\\wsl.localhost\Ubuntu\home\dev\repo`) are fully supported.
+Just open the `\\wsl$\<distro>\...` or `\\wsl.localhost\<distro>\...` path like any local folder.
+
+For such repositories, all git commands are executed by the git installed **inside the distro** (via `wsl.exe`),
+which brings native ext4 performance, correct Linux symlink/permission/case-sensitivity semantics, working Linux
+hooks, and per-distro version detection. Paths are translated automatically in both directions, including:
+
+* repository/git-dir/common-dir/worktree paths reported by git,
+* absolute path arguments (e.g. commit message temp files, `git archive`/`format-patch` output),
+* this app acting as git editor / SSH askpass (launched from the distro via WSL interop).
+
+Because the 9P file share does not deliver filesystem notifications, repository auto-refresh for WSL repositories
+runs a small long-lived inotify helper inside the distro (uses `inotifywait` when available, otherwise a python3
+inotify script that this app deploys to `/tmp` inside the distro; falls back to lightweight polling when neither
+exists). If the helper dies unexpectedly it is restarted with exponential backoff, and after repeated failures the
+watcher settles into polling. The helper terminates itself as soon as this application
+goes away — including crashes or forced termination — so no processes are leaked inside the distro. External
+diff/merge tools configured in preferences work for WSL repositories too: the tool is
+launched via WSL interop and receives `\\wsl.localhost\...` UNC paths (e.g. VS Code opens those natively). SSH
+agents running inside the distro (keychain, systemd user services) are detected and reused automatically, and
+this app still acts as SSH askpass when needed. Credentials are resolved by the WSL side gitconfig (e.g.
+`git-credential-manager` installed inside the distro), the Windows credential helper is not forced there.
+
 ## OpenAI
 
 This software supports using OpenAI or other AI service that has an OpenAI compatible HTTP API to generate commit message. You need configurate the service in `Preference` window.

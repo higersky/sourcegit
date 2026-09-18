@@ -27,7 +27,13 @@ namespace SourceGit.Commands
                 {
                     if (line.StartsWith("worktree ", StringComparison.Ordinal))
                     {
-                        last = new Models.Worktree() { FullPath = line.Substring(9).Trim() };
+                        var path = line.Substring(9).Trim();
+
+                        // `worktree list --porcelain` may report paths in another form
+                        // (e.g. Linux paths when git runs inside WSL).
+                        path = FromGitPath(path);
+
+                        last = new Models.Worktree() { FullPath = path };
                         worktrees.Add(last);
                         continue;
                     }
@@ -63,6 +69,8 @@ namespace SourceGit.Commands
 
         public async Task<bool> AddAsync(string fullpath, string name, bool createNew, string tracking)
         {
+            fullpath = ToGitPath(fullpath);
+
             var builder = new StringBuilder(1024);
             builder.Append("worktree add ");
             if (!string.IsNullOrEmpty(tracking))
@@ -88,18 +96,22 @@ namespace SourceGit.Commands
 
         public async Task<bool> LockAsync(string fullpath)
         {
+            fullpath = ToGitPath(fullpath);
             Args = $"worktree lock {fullpath.Quoted()}";
             return await ExecAsync().ConfigureAwait(false);
         }
 
         public async Task<bool> UnlockAsync(string fullpath)
         {
+            fullpath = ToGitPath(fullpath);
             Args = $"worktree unlock {fullpath.Quoted()}";
             return await ExecAsync().ConfigureAwait(false);
         }
 
         public async Task<bool> RemoveAsync(string fullpath, bool force)
         {
+            fullpath = ToGitPath(fullpath);
+
             if (force)
                 Args = $"worktree remove -f {fullpath.Quoted()}";
             else

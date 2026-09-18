@@ -19,6 +19,7 @@ namespace SourceGit.Commands
                 return string.Empty;
 
             var dir = rs.StdOut.Trim();
+            dir = FromGitPath(dir);
             if (Path.IsPathRooted(dir))
                 return dir;
             return Path.GetFullPath(Path.Combine(WorkingDirectory, dir));

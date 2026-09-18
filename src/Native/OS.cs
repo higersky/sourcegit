@@ -197,6 +197,21 @@ namespace SourceGit.Native
             return _backend.FindGitExecutable();
         }
 
+        /// <summary>
+        ///     Get the git version relevant for the given repository. For repositories
+        ///     stored inside WSL, git actually runs inside the distro, so its version
+        ///     (queried and cached per distro) may differ from the Windows one.
+        /// </summary>
+        /// <param name="repoPath">Repository path.</param>
+        /// <returns>Version of git that executes commands for this repository.</returns>
+        public static Version GetGitVersionFor(string repoPath)
+        {
+            if (WSL.TryGetDistro(repoPath, out var distro))
+                return WSL.GetGitVersion(distro);
+
+            return GitVersion;
+        }
+
         public static bool TestShellOrTerminal(Models.ShellOrTerminal shell)
         {
             return !string.IsNullOrEmpty(_backend.FindTerminal(shell));
@@ -303,6 +318,61 @@ namespace SourceGit.Native
                 return $"~{path.AsSpan(prefixLen)}";
 
             return path;
+        }
+
+        /// <summary>
+        ///     Normalize a repository path into its canonical form. Currently only
+        ///     affects WSL paths (`\\wsl$\...` → `\\wsl.localhost\...`); other paths
+        ///     are returned unchanged.
+        /// </summary>
+        /// <param name="path">Repository path.</param>
+        /// <returns>Canonical path.</returns>
+        public static string NormalizeRepositoryPath(string path)
+        {
+            return WSL.Normalize(path);
+        }
+
+        /// <summary>
+        ///     Convert an absolute path so that git can access it for the given
+        ///     repository, e.g. a temp file created by this app when git actually runs
+        ///     inside WSL. Returns the input unchanged for normal repositories.
+        /// </summary>
+        /// <param name="repo">Repository path.</param>
+        /// <param name="path">Absolute path used as git command argument.</param>
+        /// <returns>Path in the form git can access.</returns>
+        public static string GetPathForGit(string repo, string path)
+        {
+            return WSL.ToGitArgPath(repo, path);
+        }
+
+        /// <summary>
+        ///     Convert an absolute path reported by git for the given repository into
+        ///     the native Windows form, e.g. when git runs inside WSL and reports
+        ///     Linux paths like `/home/dev/repo`. Returns the input unchanged for
+        ///     normal repositories or non-absolute values.
+        /// </summary>
+        /// <param name="repo">Repository path.</param>
+        /// <param name="path">Path parsed from git output.</param>
+        /// <returns>Path in native form.</returns>
+        public static string FixupPathFromGit(string repo, string path)
+        {
+            return WSL.FixupOutputPath(repo, path);
+        }
+
+        /// <summary>
+        ///     Build the command line git uses to launch an external diff/merge tool
+        ///     for the given repository. Takes care of special execution environments
+        ///     (e.g. WSL, where the tool is launched via interop with translated paths).
+        /// </summary>
+        /// <param name="repo">Repository path.</param>
+        /// <param name="tool">External tool.</param>
+        /// <returns>Command template for git.</returns>
+        public static string BuildExternalToolCommand(string repo, Models.DiffMergeTool tool)
+        {
+            if (WSL.IsWSLPath(repo))
+                return WSL.BuildExternalToolCmd(tool.Exec, tool.Cmd);
+
+            return $"{tool.Exec.Quoted()} {tool.Cmd}";
         }
 
         public static bool SupportSetSid()

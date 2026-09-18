@@ -8,6 +8,7 @@ namespace SourceGit.Commands
         {
             WorkingDirectory = repo;
             Context = repo;
+            file = ToGitPath(file);
 
             var builder = new StringBuilder(1024);
             builder.Append("apply ");

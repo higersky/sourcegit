@@ -407,8 +407,8 @@ namespace SourceGit.ViewModels
         public Repository(bool isBare, string path, string gitDir)
         {
             IsBare = isBare;
-            FullPath = path.Replace('\\', '/').TrimEnd('/');
-            GitDir = gitDir.Replace('\\', '/').TrimEnd('/');
+            FullPath = Native.OS.NormalizeRepositoryPath(path).Replace('\\', '/').TrimEnd('/');
+            GitDir = Native.OS.NormalizeRepositoryPath(gitDir).Replace('\\', '/').TrimEnd('/');
 
             var commonDirFile = Path.Combine(GitDir, "commondir");
             var isWorktree = GitDir.IndexOf("/worktrees/", StringComparison.Ordinal) > 0 &&
@@ -417,6 +417,8 @@ namespace SourceGit.ViewModels
             if (isWorktree)
             {
                 var commonDir = File.ReadAllText(commonDirFile).Trim();
+                commonDir = Native.OS.FixupPathFromGit(GitDir, commonDir);
+
                 if (Path.IsPathRooted(commonDir))
                     commonDir = new DirectoryInfo(commonDir).FullName;
                 else
@@ -481,6 +483,16 @@ namespace SourceGit.ViewModels
         public void SendNotification(string message, bool isError = false)
         {
             Models.Notification.Send(FullPath, message, isError);
+        }
+
+        /// <summary>
+        ///     Notify the repository watcher whether the main window is focused,
+        ///     so background work can be scaled down while the user is away.
+        /// </summary>
+        /// <param name="focused">Whether the main window has focus.</param>
+        public void SetWindowFocused(bool focused)
+        {
+            _watcher?.SetWindowFocused(focused);
         }
 
         public bool CanCreatePopup()

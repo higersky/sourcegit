@@ -286,7 +286,7 @@ namespace SourceGit
             if (args.Length <= 1 || !args[0].Equals("--rebase-todo-editor", StringComparison.Ordinal))
                 return false;
 
-            var file = args[1].Replace('\\', '/').Trim('\"').Trim();
+            var file = FixupEditorFileArg(args[1]);
             var filename = Path.GetFileName(file);
             if (!filename.Equals("git-rebase-todo", StringComparison.OrdinalIgnoreCase))
                 return true;
@@ -315,7 +315,7 @@ namespace SourceGit
 
             exitCode = 0;
 
-            var file = args[1].Replace('\\', '/').Trim('\"').Trim();
+            var file = FixupEditorFileArg(args[1]);
             var filename = Path.GetFileName(file);
             if (!filename.Equals("COMMIT_EDITMSG", StringComparison.OrdinalIgnoreCase))
                 return true;
@@ -424,7 +424,7 @@ namespace SourceGit
             if (args is not { Length: > 1 } || !args[0].Equals("--core-editor", StringComparison.Ordinal))
                 return false;
 
-            var file = args[1].Replace('\\', '/').Trim('\"').Trim();
+            var file = FixupEditorFileArg(args[1]);
             if (!File.Exists(file))
             {
                 desktop.Shutdown(-1);
@@ -435,6 +435,25 @@ namespace SourceGit
             editor.AsStandalone(file);
             desktop.MainWindow = editor;
             return true;
+        }
+
+        /// <summary>
+        ///     Fix up the file path git passes to this app acting as editor. When git
+        ///     runs in a special environment it may report the path in a non-native
+        ///     form (e.g. Linux paths inside WSL), which is translated back using the
+        ///     environment information forwarded by the launcher.
+        /// </summary>
+        /// <param name="file">File path given by git.</param>
+        /// <returns>Path in Windows form.</returns>
+        private static string FixupEditorFileArg(string file)
+        {
+            file = file.Replace('\\', '/').Trim('\"').Trim();
+
+            var distro = Environment.GetEnvironmentVariable("SOURCEGIT_WSL_DISTRO");
+            if (!string.IsNullOrEmpty(distro) && file.Length > 0 && file[0] == '/')
+                return Native.WSL.ToUNCPath(distro, file);
+
+            return file;
         }
 
         private bool TryLaunchAsAskpass(IClassicDesktopStyleApplicationLifetime desktop)
@@ -489,6 +508,21 @@ namespace SourceGit
             if (desktop.Args is { Length: 1 })
             {
                 var arg = desktop.Args[0].Replace('\\', '/').TrimEnd('/').Trim('\"').Trim();
+                if (arg.Length > 0 && !Path.IsPathFullyQualified(arg))
+                {
+                    // Relative paths (e.g. `sourcegit.exe .` launched from inside WSL)
+                    // must be resolved against the current directory, which may itself
+                    // be a WSL UNC path already.
+                    try
+                    {
+                        arg = Path.GetFullPath(arg);
+                    }
+                    catch
+                    {
+                        // Invalid path, leave as-is. Directory.Exists below will fail.
+                    }
+                }
+
                 if (Directory.Exists(arg))
                     startupRepo = arg;
             }

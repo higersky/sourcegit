@@ -122,6 +122,21 @@ namespace SourceGit.ViewModels
             _ignoreIndexChange = false;
         }
 
+        /// <summary>
+        ///     Notify all open repositories whether the main window is focused.
+        ///     Used to scale down background work (e.g. the WSL poll fallback) while
+        ///     the user is not looking at the app.
+        /// </summary>
+        /// <param name="focused">Whether the main window has focus.</param>
+        public void SetWindowFocused(bool focused)
+        {
+            foreach (var page in Pages)
+            {
+                if (page.Data is Repository repo)
+                    repo.SetWindowFocused(focused);
+            }
+        }
+
         public void SwitchWorkspace(Workspace to)
         {
             if (to == null || to.IsActive)
@@ -286,7 +301,7 @@ namespace SourceGit.ViewModels
 
         public void OpenRepositoryInTab(string repo, LauncherPage page)
         {
-            var normalizedPath = repo.Replace('\\', '/').TrimEnd('/');
+            var normalizedPath = Native.OS.NormalizeRepositoryPath(repo).Replace('\\', '/').TrimEnd('/');
             var node = Preferences.Instance.FindNode(normalizedPath) ?? new RepositoryNode
             {
                 Id = normalizedPath,
@@ -476,7 +491,11 @@ namespace SourceGit.ViewModels
                     File.Exists(Path.Combine(fullpath, "HEAD")))
                     return fullpath;
 
-                return null;
+                // The heuristic check may fail for layouts whose parts are symlinks
+                // (e.g. Android repo tool checkouts inside WSL, whose refs/objects
+                // cannot be inspected over the 9P share). Ask git instead — it runs
+                // natively inside WSL and resolves those symlinks correctly.
+                return new Commands.QueryGitDir(repo).GetResult();
             }
 
             if (File.Exists(fullpath))
@@ -484,6 +503,10 @@ namespace SourceGit.ViewModels
                 var redirect = File.ReadAllText(fullpath).Trim();
                 if (redirect.StartsWith("gitdir: ", StringComparison.Ordinal))
                     redirect = redirect.Substring(8);
+
+                // Worktree `.git` files may contain paths in another form
+                // (e.g. Linux paths when git runs inside WSL).
+                redirect = Native.OS.FixupPathFromGit(repo, redirect);
 
                 if (!Path.IsPathRooted(redirect))
                     redirect = Path.GetFullPath(Path.Combine(repo, redirect));
