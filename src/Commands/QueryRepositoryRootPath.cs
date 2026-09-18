@@ -12,12 +12,22 @@ namespace SourceGit.Commands
 
         public Result GetResult()
         {
-            return ReadToEnd();
+            return FixupResult(ReadToEnd());
         }
 
         public async Task<Result> GetResultAsync()
         {
-            return await ReadToEndAsync().ConfigureAwait(false);
+            return FixupResult(await ReadToEndAsync().ConfigureAwait(false));
+        }
+
+        private Result FixupResult(Result rs)
+        {
+            // `rev-parse --show-toplevel` reports a Linux path (e.g. `/home/dev/repo`)
+            // when git runs inside WSL. Convert it back to the Windows UNC form.
+            if (rs.IsSuccess && !string.IsNullOrEmpty(rs.StdOut))
+                rs.StdOut = FromGitPath(rs.StdOut.Trim());
+
+            return rs;
         }
     }
 }

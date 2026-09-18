@@ -13,6 +13,7 @@
         {
             WorkingDirectory = repo;
             Context = repo;
+            pathspec = ToGitPath(pathspec);
             Args = $"reset --pathspec-from-file={pathspec.Quoted()}";
         }
     }

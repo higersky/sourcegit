@@ -33,6 +33,7 @@ namespace SourceGit.Commands
             {
                 string tmp = Path.GetTempFileName();
                 await File.WriteAllTextAsync(tmp, message);
+                tmp = ToGitPath(tmp);
                 builder.Append(" -F ").Append(tmp.Quoted());
 
                 Args = builder.ToString();

@@ -30,7 +30,7 @@ namespace SourceGit.Commands
             }
             else
             {
-                var cmd = $"{tool.Exec.Quoted()} {tool.Cmd}";
+                var cmd = Native.OS.BuildExternalToolCommand(WorkingDirectory, tool);
                 Args = $"-c difftool.sourcegit.cmd={cmd.Quoted()} difftool --tool=sourcegit --no-prompt {_option}";
             }
 

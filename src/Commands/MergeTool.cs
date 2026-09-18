@@ -31,7 +31,7 @@ namespace SourceGit.Commands
             }
             else
             {
-                var cmd = $"{tool.Exec.Quoted()} {tool.Cmd}";
+                var cmd = Native.OS.BuildExternalToolCommand(WorkingDirectory, tool);
                 Args = $"-c mergetool.sourcegit.cmd={cmd.Quoted()} -c mergetool.writeToTemp=true -c mergetool.keepBackup=false -c mergetool.trustExitCode=true mergetool --tool=sourcegit {_file}";
             }
 

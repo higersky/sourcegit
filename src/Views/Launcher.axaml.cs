@@ -43,6 +43,8 @@ namespace SourceGit.Views
 
             InitializeComponent();
             PositionChanged += OnPositionChanged;
+            Activated += (_, _) => (DataContext as ViewModels.Launcher)?.SetWindowFocused(true);
+            Deactivated += (_, _) => (DataContext as ViewModels.Launcher)?.SetWindowFocused(false);
 
             var layout = ViewModels.Preferences.Instance.Layout;
             Width = layout.LauncherWidth;

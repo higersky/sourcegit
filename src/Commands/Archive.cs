@@ -6,6 +6,7 @@
         {
             WorkingDirectory = repo;
             Context = repo;
+            saveTo = ToGitPath(saveTo);
             Args = $"archive --format=zip --verbose --output={saveTo.Quoted()} {revision}";
         }
     }

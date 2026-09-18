@@ -24,6 +24,10 @@ namespace SourceGit.Commands
             if (string.IsNullOrEmpty(stdout))
                 return null;
 
+            // `rev-parse --git-dir` may report an absolute Linux path when git runs
+            // inside WSL. Convert it back to the Windows UNC form.
+            stdout = FromGitPath(stdout);
+
             return Path.IsPathRooted(stdout) ? stdout : Path.GetFullPath(Path.Combine(WorkingDirectory, stdout));
         }
     }

@@ -175,6 +175,18 @@ namespace SourceGit.Native
             var cwd = string.IsNullOrEmpty(workdir) ? home : workdir;
             var terminal = OS.ShellOrTerminal;
 
+            // Conventional terminals cannot use a UNC working directory. For WSL
+            // repositories launch the distro's default shell directly instead.
+            if (Native.WSL.TryGetDistro(cwd, out var distro))
+            {
+                var start = new ProcessStartInfo();
+                start.FileName = Native.WSL.Executable;
+                start.Arguments = $"-d {distro} --cd {Native.WSL.ToLinuxPath(cwd).Quoted()}"; // `-d` value must stay unquoted, see WSL.BuildGitCommandLine
+                start.UseShellExecute = true;
+                Process.Start(start);
+                return;
+            }
+
             if (!File.Exists(terminal))
             {
                 Models.Notification.Send(workdir, "Terminal is not specified! Please confirm that the correct shell/terminal has been configured.", true);

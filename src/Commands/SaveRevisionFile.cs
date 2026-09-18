@@ -27,13 +27,7 @@ namespace SourceGit.Commands
 
         private static async Task ExecCmdAsync(string repo, string args, string outputFile, Stream input = null)
         {
-            var starter = new ProcessStartInfo();
-            starter.WorkingDirectory = repo;
-            starter.FileName = Native.OS.GitExecutable;
-            starter.Arguments = args;
-            starter.UseShellExecute = false;
-            starter.CreateNoWindow = true;
-            starter.WindowStyle = ProcessWindowStyle.Hidden;
+            var starter = Command.CreateGitProcessStartInfo(repo, args);
             starter.RedirectStandardInput = true;
             starter.RedirectStandardOutput = true;
             starter.RedirectStandardError = true;
